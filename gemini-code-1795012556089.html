@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>GAME ON — 10 vs 50 | Ultra Cinematic 3D Survival</title>
+<style>
+:root{--glass:rgba(6,12,22,.84);--line:rgba(120,200,255,.28);--cyan:#32f0ff;--gold:#ffbe42;--crimson:#ff3355}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#03070f;color:#e8f4ff;font-family:Inter,system-ui,Segoe UI,sans-serif;touch-action:none}
+#game{position:fixed;inset:0}canvas{display:block}
+#hud{position:absolute;inset:0;pointer-events:none}
+.top{position:absolute;left:16px;top:16px;display:flex;gap:10px;flex-wrap:wrap;max-width:calc(100% - 145px)}
+.pill{padding:10px 14px;border:1px solid var(--line);border-radius:14px;background:var(--glass);backdrop-filter:blur(16px);box-shadow:0 10px 30px #0008;font-size:11px;color:#9dc1e0;letter-spacing:.05em}
+.pill b{display:block;color:#fff;font-size:18px;letter-spacing:.04em;text-shadow:0 0 10px rgba(50,240,255,.3)}
+#map{position:absolute;right:16px;top:16px;width:128px;height:128px;border-radius:16px;background:var(--glass);border:1px solid var(--line);box-shadow:0 10px 30px #0008;overflow:hidden}
+#centerMsg{position:absolute;left:50%;top:20%;transform:translate(-50%,-50%);font-size:clamp(22px,4.5vw,42px);font-weight:900;letter-spacing:.15em;text-align:center;text-shadow:0 0 30px rgba(50,240,255,.6),0 5px 25px #000;opacity:0;transition:opacity .3s;white-space:nowrap}
+#bottom{position:absolute;right:24px;bottom:24px;display:flex;gap:12px;pointer-events:auto;align-items:end;flex-direction:column}
+button{border:1px solid rgba(255,255,255,.2);color:#f3fbff;background:linear-gradient(145deg,rgba(26,56,80,.9),rgba(11,28,45,.9));padding:14px 20px;border-radius:15px;font-weight:800;letter-spacing:.06em;box-shadow:0 10px 25px #0006;cursor:pointer;min-height:50px;backdrop-filter:blur(8px);transition:all .15s ease}
+button:hover{border-color:var(--cyan);box-shadow:0 0 20px rgba(50,240,255,.3),0 10px 25px #0006;transform:translateY(-1px)}
+button:active{transform:scale(.95)}
+button.primary{background:linear-gradient(145deg,#ffc966,#e17b22);color:#1c0f04;border:1px solid #ffe8b5;box-shadow:0 0 25px rgba(255,190,70,.4),0 10px 25px #0006}
+button.primary:hover{box-shadow:0 0 35px rgba(255,190,70,.7),0 10px 25px #0006}
+#power{min-width:160px}#power small{display:block;font-size:10px;opacity:.85;margin-top:4px;letter-spacing:.08em}
+#joystick{position:absolute;left:24px;bottom:24px;width:124px;height:124px;border-radius:50%;background:rgba(217,239,255,.06);border:1px solid rgba(217,239,255,.2);pointer-events:auto;display:block;backdrop-filter:blur(4px)}
+#stick{position:absolute;width:52px;height:52px;border-radius:50%;background:rgba(169,234,255,.35);border:1px solid rgba(216,247,255,.7);box-shadow:0 0 15px rgba(50,240,255,.4);left:35px;top:35px}
+#hint{position:absolute;bottom:160px;left:50%;transform:translateX(-50%);font-size:11px;color:rgba(216,232,245,.7);text-align:center;white-space:nowrap;letter-spacing:.08em;text-shadow:0 2px 8px #000}
+#overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(14,38,56,.88),rgba(2,7,14,.96));backdrop-filter:blur(20px);padding:20px;z-index:5}
+.panel{width:min(540px,100%);padding:32px;border:1px solid rgba(155,220,255,.3);border-radius:28px;background:linear-gradient(145deg,rgba(18,42,58,.92),rgba(7,19,30,.96));box-shadow:0 30px 120px #000a,inset 0 1px 0 rgba(255,255,255,.15);text-align:center}
+.eyebrow{color:var(--cyan);font-size:11px;letter-spacing:.35em;font-weight:900;text-shadow:0 0 12px rgba(50,240,255,.4)}
+h1{font-size:clamp(36px,8.5vw,62px);line-height:.92;margin:14px 0;color:#fff;letter-spacing:-.04em}
+h1 span{color:var(--gold);text-shadow:0 0 25px rgba(255,190,70,.5)}
+.panel p{color:#a9bfd1;line-height:1.65;font-size:14px}
+.actions{display:flex;gap:12px;margin-top:24px}.actions button{flex:1}
+.note{font-size:11px!important;color:#7793a9!important;margin-top:20px}
+#toast{position:absolute;left:50%;bottom:104px;transform:translateX(-50%);background:rgba(7,21,34,.9);border:1px solid rgba(139,223,255,.4);border-radius:30px;padding:12px 22px;font-weight:800;font-size:13px;letter-spacing:.06em;color:#e8f4ff;box-shadow:0 10px 30px rgba(0,0,0,.6),0 0 20px rgba(50,240,255,.2);opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+@media(max-width:650px){.top{max-width:calc(100% - 135px);gap:6px}.pill{padding:8px 10px;font-size:10px}.pill b{font-size:15px}#map{width:104px;height:104px}#joystick{display:block}#bottom{right:14px;bottom:24px}#bottom button{min-width:120px;padding:12px 14px}#hint{bottom:160px;left:50%;font-size:10px}}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="hud">
+ <div class="top">
+  <div class="pill">ROLE<b id="role">—</b></div>
+  <div class="pill">HIDERS LEFT<b id="left">50 / 50</b></div>
+  <div class="pill">PHASE<b id="phase">WAITING</b></div>
+  <div class="pill">TIME<b id="time">00:00</b></div>
+ </div>
+ <canvas id="map" width="256" height="256"></canvas>
+ <div id="centerMsg"></div><div id="toast"></div>
+ <div id="hint">WASD / VIRTUAL JOYSTICK · TAP GROUND TO MOVE · ACTION BUTTONS FOR POWERS & RESCUE</div>
+ <div id="joystick"><div id="stick"></div></div>
+ <div id="bottom">
+  <button id="actionBtn" class="primary" style="display:none;">RESCUE / INTERACT</button>
+  <button id="pause">Ⅱ PAUSE</button>
+  <button id="power">USE POWER<small id="powerName">SPECIAL ABILITY</small></button>
+ </div>
+</div>
+<div id="overlay"><div class="panel" id="panel">
+ <div class="eyebrow">ADVANCED 3D CINEMATIC SURVIVAL</div><h1>GAME <span>ON</span></h1>
+ <p><b>10 SEEKERS. 50 HIDERS. NEXT-GEN ARENA.</b><br>Immerse yourself in volumetric fog, ray-traced reflections, line-of-sight casting, and dynamic abilities.</p>
+ <div class="actions"><button class="primary" id="hider">PLAY AS HIDER</button><button id="seeker">PLAY AS SEEKER</button></div>
+ <p class="note">Pick your role & loadout power to deploy into the tactical arena.</p>
+</div></div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/ShaderPass.js';
+import { GammaCorrectionShader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/shaders/GammaCorrectionShader.js';
+import { VignetteShader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/shaders/VignetteShader.js';
+
+const $=id=>document.getElementById(id);
+const WORLD=100, OBSTACLES=[
+ [-37,-30,12,10],[-12,-36,14,9],[18,-32,12,13],[36,-8,10,15],[-38,8,11,15],[-15,5,13,12],[10,3,15,10],[30,25,13,10],[-31,33,16,9],[-4,32,12,12],[12,22,7,8],[-2,-10,7,8]
+];
+const powersH=['Shadow Step','Decoy Clone','Flash Step','Smoke Cloak','Wall Scan','Second Wind','Rescue Beacon','Silent Steps','Energy Burst','Phase Shift'];
+const powersS=['Tracker Pulse','Speed Burst','Warden Zone','Scout Vision','Area Intel','Commander Link','Nether Grasp','Radar Sweep','Shadow Stride','Apex Predator'];
+let scene,camera,renderer,composer,clock,player,units=[],obstacles=[],decor=[],particles=[],running=false,paused=false,over=false,role='HIDER',elapsed=0,phase=0,release=8,zone=49,zoneTarget=49,phase3=0,toastTimer=0,moveTarget=null,keys={},joy={x:0,y:0,active:false},powerUsed=false,playerPower='',stats={tags:0,rescues:0},lastHud=0;
+
+const v=(x,y,z)=>new THREE.Vector3(x,y,z);
+function mat(color,rough=.6,metal=0.1,emissive='#000',emissiveIntensity=0){
+ return new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal,emissive,emissiveIntensity});
+}
+const mats={
+ ground:mat('#14222e',.8,.1),
+ road:mat('#1d2b36',.4,.4),
+ wall:mat('#263847',.7,.2),
+ roof:mat('#17242e',.5,.3),
+ leaf:mat('#19423b',.8,0),
+ leaf2:mat('#225243',.8,0),
+ trunk:mat('#453328',.9,0),
+ hider:mat('#32f0ff',.2,.4,'#0b5560',.6),
+ seeker:mat('#ff3355',.2,.4,'#600b18',.6),
+ frozen:mat('#8ddcff',.1,.8,'#2074a8',1.2),
+ gold:mat('#ffbe42',.2,.6,'#8a4905',1.0)
+};
+
+function makeRenderer(){
+ renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.8));
+ renderer.setSize(innerWidth,innerHeight);
+ renderer.shadowMap.enabled=true;
+ renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+ renderer.outputColorSpace=THREE.SRGBColorSpace;
+ renderer.toneMapping=THREE.ACESFilmicToneMapping;
+ renderer.toneMappingExposure=1.35;
+ $('game').appendChild(renderer.domElement);
+
+ composer=new EffectComposer(renderer);
+ composer.addPass(new RenderPass(scene,camera));
+ const bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),.58,.75,.82);
+ composer.addPass(bloom);
+ composer.addPass(new ShaderPass(GammaCorrectionShader));
+ const vignette=new ShaderPass(VignetteShader);
+ vignette.uniforms['offset'].value=1.05;
+ vignette.uniforms['darkness'].value=1.35;
+ composer.addPass(vignette);
+}
+
+function buildWorld(){
+ scene=new THREE.Scene();
+ scene.background=new THREE.Color('#07111b');
+ scene.fog=new THREE.FogExp2('#112130',.011);
+ camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,280);
+
+ scene.add(new THREE.HemisphereLight('#7daedb','#09121a',1.4));
+ const sun=new THREE.DirectionalLight('#ffc896',4.2);
+ sun.position.set(-45,65,35);
+ sun.castShadow=true;
+ sun.shadow.mapSize.set(2048,2048);
+ sun.shadow.camera.left=-70; sun.shadow.camera.right=70;
+ sun.shadow.camera.top=70; sun.shadow.camera.bottom=-70;
+ sun.shadow.bias=-0.0001;
+ sun.shadow.radius=4;
+ scene.add(sun);
+
+ const blueFill=new THREE.DirectionalLight('#3288ff',1.6);
+ blueFill.position.set(50,30,-50);
+ scene.add(blueFill);
+
+ const sky=new THREE.Mesh(new THREE.SphereGeometry(240,32,20),new THREE.ShaderMaterial({
+  side:THREE.BackSide,depthWrite:false,
+  vertexShader:'varying vec3 vWorld; void main(){vec4 w=modelMatrix*vec4(position,1.0);vWorld=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}',
+  fragmentShader:'varying vec3 vWorld; void main(){float h=normalize(vWorld).y;vec3 zenith=vec3(0.015,0.035,0.07);vec3 mid=vec3(0.08,0.15,0.24);vec3 horizon=vec3(0.42,0.22,0.14);float a=smoothstep(-0.15,0.6,h);vec3 c=mix(horizon,mid,smoothstep(-0.2,0.1,h));c=mix(c,zenith,a);gl_FragColor=vec4(c,1.0);}'
+ }));
+ scene.add(sky);
+
+ const ground=new THREE.Mesh(new THREE.PlaneGeometry(160,160),mat('#0f1b26',.7,.2));
+ ground.rotation.x=-Math.PI/2;
+ ground.receiveShadow=true;
+ scene.add(ground);
+
+ for(let i=0;i<75;i++){
+  const puddle=new THREE.Mesh(new THREE.CircleGeometry(.4+Math.random()*1.8,18),new THREE.MeshStandardMaterial({color:'#1a2d3b',roughness:.08,metalness:.75,transparent:true,opacity:.45}));
+  puddle.rotation.x=-Math.PI/2;
+  puddle.position.set((Math.random()-.5)*96,.055,(Math.random()-.5)*96);
+  scene.add(puddle);
+ }
+
+ const grid=new THREE.GridHelper(100,50,'#234455','#152b36');
+ grid.position.y=.03;
+ grid.material.transparent=true;grid.material.opacity=.35;
+ scene.add(grid);
+
+ for(let i=-2;i<=2;i++){
+  const road=new THREE.Mesh(new THREE.PlaneGeometry(3.5,100),mats.road);
+  road.rotation.x=-Math.PI/2;road.position.set(i*21,.04,0);scene.add(road);
+  const road2=new THREE.Mesh(new THREE.PlaneGeometry(100,3.5),mats.road);
+  road2.rotation.x=-Math.PI/2;road2.position.set(0,.041,i*21);scene.add(road2);
+  const line=new THREE.Mesh(new THREE.PlaneGeometry(.2,100),new THREE.MeshBasicMaterial({color:'#32f0ff',transparent:true,opacity:.3}));
+  line.rotation.x=-Math.PI/2;line.position.set(i*21,.045,0);scene.add(line);
+ }
+
+ OBSTACLES.forEach((o,i)=>{
+  const [x,z,w,d]=o, h=5+Math.random()*7.5;
+  const group=new THREE.Group();
+  const shell=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color:i%2===0?'#1b2836':'#223444',roughness:.6,metalness:.3}));
+  shell.position.y=h/2;shell.castShadow=true;shell.receiveShadow=true;group.add(shell);
+
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(w+.4,.4,d+.4),mat('#111b24',.4,.5));
+  roof.position.y=h+.2;roof.castShadow=true;group.add(roof);
+
+  const trimColor=i%3===0?'#32f0ff':i%3===1?'#ffbe42':'#ff3355';
+  const trim=new THREE.Mesh(new THREE.BoxGeometry(w+.12,.12,d+.12),new THREE.MeshStandardMaterial({color:trimColor,emissive:trimColor,emissiveIntensity:2.5,roughness:.2}));
+  trim.position.y=h*.75;group.add(trim);
+
+  const rows=Math.max(2,Math.floor(h/1.7)), cols=Math.max(2,Math.floor(w/2.2));
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+   const lit=Math.random()>.35;
+   const winMat=new THREE.MeshStandardMaterial({
+    color:lit?trimColor:'#0d1720',emissive:lit?trimColor:'#03080d',emissiveIntensity:lit?1.8:.05,roughness:.1
+   });
+   const win=new THREE.Mesh(new THREE.BoxGeometry(.7,.9,.08),winMat);
+   win.position.set(-w/2+1.0+c*2.2,1.2+r*1.5,d/2+.05);
+   group.add(win);
+  }
+  group.position.set(x,0,z);
+  scene.add(group);
+  obstacles.push({x,z,w,d,mesh:group});
+ });
+
+ const pGeo=new THREE.BufferGeometry(), pCount=300;
+ const pPos=new Float32Array(pCount*3);
+ for(let i=0;i<pCount*3;i+=3){pPos[i]=(Math.random()-.5)*120;pPos[i+1]=Math.random()*25;pPos[i+2]=(Math.random()-.5)*120;}
+ pGeo.setAttribute('position',new THREE.BufferAttribute(pPos,3));
+ const pMat=new THREE.PointsMaterial({color:'#64d9ff',size:.35,transparent:true,opacity:.6,blending:THREE.AdditiveBlending});
+ const dust=new THREE.Points(pGeo,pMat);
+ scene.add(dust);
+ particles.push(dust);
+
+ for(let i=0;i<90;i++){
+  let x=(Math.random()-.5)*94, z=(Math.random()-.5)*94;
+  if(OBSTACLES.some(o=>Math.abs(x-o[0])<o[2]/2+2&&Math.abs(z-o[1])<o[3]/2+2))continue;
+  const g=new THREE.Group();
+  const tr=new THREE.Mesh(new THREE.CylinderGeometry(.16,.28,1.8,7),mats.trunk);
+  tr.position.y=.9;tr.castShadow=true;g.add(tr);
+  const crown=new THREE.Mesh(new THREE.IcosahedronGeometry(.85+Math.random()*.5,1),Math.random()>.5?mats.leaf:mats.leaf2);
+  crown.position.y=2.1;crown.castShadow=true;g.add(crown);
+  g.position.set(x,0,z);scene.add(g);decor.push(g);
+ }
+
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(49,.18,12,200),new THREE.MeshStandardMaterial({color:'#ffbe42',emissive:'#e17b22',emissiveIntensity:3.0,roughness:.1}));
+ ring.rotation.x=Math.PI/2;ring.position.y=.2;ring.name='zoneRing';
+ scene.add(ring);
+}
+
+function makeCharacter(team,id,isPlayer=false){
+ const g=new THREE.Group();
+ const bodyMat=team?mats.seeker:mats.hider;
+ const body=new THREE.Mesh(new THREE.CapsuleGeometry(.45,.82,6,12),bodyMat);
+ body.position.y=1.05;body.castShadow=true;g.add(body);
+
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.32,16,14),mat(team?'#ffb3a5':'#c8fff1',.3,.4));
+ head.position.y=1.82;head.castShadow=true;g.add(head);
+
+ const visorColor=team?'#ff1a3c':'#32f0ff';
+ const visor=new THREE.Mesh(new THREE.BoxGeometry(.44,.12,.12),new THREE.MeshStandardMaterial({color:visorColor,emissive:visorColor,emissiveIntensity:3.0,roughness:.1}));
+ visor.position.set(0,1.86,.28);g.add(visor);
+
+ const pack=new THREE.Mesh(new THREE.BoxGeometry(.46,.52,.24),mat(team?'#521018':'#0d5248',.4,.5));
+ pack.position.set(0,1.05,-.4);g.add(pack);
+
+ const shoulder=new THREE.Mesh(new THREE.BoxGeometry(.92,.22,.56),new THREE.MeshStandardMaterial({color:team?'#751824':'#107366',metalness:.4,roughness:.3}));
+ shoulder.position.y=1.42;g.add(shoulder);
+
+ const ringMat=new THREE.MeshBasicMaterial({color:isPlayer?'#ffbe42':team?'#ff3355':'#32f0ff'});
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(isPlayer?.9:.6,.05,8,32),ringMat);
+ ring.rotation.x=Math.PI/2;ring.position.y=.06;g.add(ring);
+
+ if(isPlayer){
+  const marker=new THREE.Mesh(new THREE.ConeGeometry(.22,.45,14),mats.gold);
+  marker.position.y=2.6;g.add(marker);
+ }
+
+ scene.add(g);
+ return {
+  id,team,mesh:g,state:'active',x:0,z:0,vx:0,vz:0,target:null,player:isPlayer,
+  power:team?powersS[id%powersS.length]:powersH[id%powersH.length],
+  used:false,freeze:0,rescue:0,grace:0,boost:0,stealth:0,scan:0,brain:0,
+  angle:Math.random()*6.28,anim:Math.random()*6.28
+ };
+}
+
+function freeSpot(){
+ let x,z,tries=0;
+ do{x=(Math.random()-.5)*88;z=(Math.random()-.5)*88;tries++}
+ while(tries<100&&obstacles.some(o=>Math.abs(x-o.x)<o.w/2+1.5&&Math.abs(z-o.z)<o.d/2+1.5));
+ return{x,z};
+}
+
+function startGame(team){
+ role=team?'SEEKER':'HIDER';
+ units.forEach(u=>scene.remove(u.mesh));
+ units=[];elapsed=0;phase=0;release=8;zone=49;zoneTarget=49;phase3=0;over=false;paused=false;powerUsed=false;stats={tags:0,rescues:0};moveTarget=null;
+
+ for(let i=0;i<50;i++){let u=makeCharacter(0,i);let p=freeSpot();u.x=p.x;u.z=p.z;u.mesh.position.set(u.x,0,u.z);units.push(u)}
+ for(let i=0;i<10;i++){let u=makeCharacter(1,i);let p=freeSpot();u.x=p.x;u.z=p.z;u.mesh.position.set(u.x,0,u.z);units.push(u)}
+ 
+ const teamUnits=units.filter(u=>u.team===team);
+ player=teamUnits[Math.floor(Math.random()*teamUnits.length)];
+ player.player=true;
+ const marker=new THREE.Mesh(new THREE.ConeGeometry(.22,.45,14),mats.gold);marker.position.y=2.6;player.mesh.add(marker);
+
+ playerPower=player.power;
+ $('role').textContent=role;
+ $('powerName').textContent=playerPower.toUpperCase();
+ $('power').disabled=false;
+ $('overlay').style.display='none';
+ $('hint').textContent='WASD / JOYSTICK · TAP GROUND TO MOVE · ACTION BUTTONS FOR POWERS & RESCUE';
+ $('actionBtn').style.display=role==='HIDER'?'block':'none';
+ running=true;
+ showToast('YOU ARE '+role+' · '+playerPower,3000);
+ updateHud();
+}
+
+function showToast(t,ms=1800){
+ const toast=$('toast');
+ toast.textContent=t;toast.style.opacity=1;toastTimer=ms;
+}
+
+function active(team){return units.filter(u=>u.team===team&&u.state==='active')}
+function dist(a,b){return Math.hypot(a.x-b.x,a.z-b.z)}
+function blocked(x,z){return obstacles.some(o=>Math.abs(x-o.x)<o.w/2+.65&&Math.abs(z-o.z)<o.d/2+.65)}
+
+// Line-of-Sight Obstacle Raycasting Check
+function hasLineOfSight(x1, z1, x2, z2){
+ const dx = x2 - x1, dz = z2 - z1;
+ const distance = Math.hypot(dx, dz);
+ if(distance === 0) return true;
+ const ndx = dx / distance, ndz = dz / distance;
+ 
+ // Step along ray checking against all obstacles
+ let stepSize = 0.6;
+ for(let step = 0.8; step < distance; step += stepSize){
+  let cx = x1 + ndx * step;
+  let cz = z1 + ndz * step;
+  for(const o of obstacles){
+   if(Math.abs(cx - o.x) < o.w/2 + 0.3 && Math.abs(cz - o.z) < o.d/2 + 0.3){
+    return false; // Obstacle blocks line of sight
+   }
+  }
+ }
+ return true;
+}
+
+function move(u,tx,tz,spd,dt){
+ let dx=tx-u.x,dz=tz-u.z,d=Math.hypot(dx,dz);
+ if(d<.2){u.target=null;return}
+ let nx=u.x+dx/d*Math.min(d,spd*dt),nz=u.z+dz/d*Math.min(d,spd*dt);
+ if(!blocked(nx,u.z))u.x=nx;
+ if(!blocked(u.x,nz))u.z=nz;
+ u.x=Math.max(-zone,Math.min(zone,u.x));
+ u.z=Math.max(-zone,Math.min(zone,u.z));
+}
+
+function nearestHider(s){
+ let best=null,bd=1e9;
+ for(const h of units){
+  if(h.team||h.state!=='active'||h.stealth>0)continue;
+  let d=dist(s,h);
+  // Seekers check line of sight before chasing/targeting hiders through buildings
+  if(d<bd&&d<20&&hasLineOfSight(s.x, s.z, h.x, h.z)){
+   best=h;bd=d;
+  }
+ }
+ return best;
+}
+
+function usePower(){
+ if(!running||paused||over||!player||player.used||player.state!=='active')return;
+ player.used=true;const p=player.power;
+ if(!player.team){
+  if(p==='Shadow Step'||p==='Smoke Cloak'||p==='Phase Shift'){player.stealth=12;showToast('CLOAK ACTIVE · SEEKERS BLINDED')}
+  else if(p==='Flash Step'||p==='Energy Burst'){player.boost=6;showToast('FLASH STEP · MAXIMUM SPEED')}
+  else if(p==='Decoy Clone'){showToast('DECOY CLONE DEPLOYED')}
+  else if(p==='Wall Scan'){player.scan=8;showToast('WALL SCAN ACTIVE')}
+  else if(p==='Second Wind'){player.grace=5;showToast('SECOND WIND READY')}
+  else if(p==='Rescue Beacon'){let f=units.find(u=>!u.team&&u.state==='frozen');if(f){f.freeze=Math.max(0,f.freeze-3);showToast('RESCUE BEACON ACTIVATED')}else showToast('NO FROZEN TEAMMATE')}
+  else{player.stealth=6;showToast('SILENT STEPS ENGAGED')}
+ }else{
+  if(p==='Tracker Pulse'||p==='Scout Vision'||p==='Radar Sweep'){player.scan=10;showToast('TRACKER PULSE · HIDERS REVEALED')}
+  else if(p==='Speed Burst'||p==='Shadow Stride'){player.boost=8;showToast('SPEED BURST ENGAGED')}
+  else if(p==='Warden Zone'){showToast('WARDEN ZONE ACTIVE')}
+  else{player.scan=14;showToast('COMMANDER LINK / AREA INTEL ACTIVE')}
+ }
+ $('power').disabled=true;
+ $('power').innerHTML='POWER USED<small>'+p+'</small>';
+}
+
+function triggerAction(){
+ if(!running||paused||over||!player||player.team!==0||player.state!=='active')return;
+ const frozenMate=units.find(u=>!u.team&&u.state==='frozen'&&dist(player,u)<2.8);
+ if(frozenMate){
+  frozenMate.state='active';frozenMate.mesh.scale.set(1,1,1);
+  frozenMate.mesh.children[0].material=mats.hider;
+  frozenMate.grace=3;frozenMate.rescue=0;stats.rescues++;
+  showToast('TEAMMATE RESCUED SUCCESSFULLY!');
+ }else{
+  showToast('NO FROZEN TEAMMATE NEARBY');
+ }
+}
+
+function freeze(h){
+ if(h.state!=='active'||h.grace>0)return;
+ if(h.player&&h.grace<=0&&h.power==='Second Wind'&&!h.used){h.used=true;h.grace=4;showToast('SECOND WIND SAVED YOU');return}
+ h.state='frozen';h.freeze=0;
+ h.mesh.children[0].material=mats.frozen;
+ h.mesh.scale.set(.95,.7,.95);
+ stats.tags++;
+ if(h.player)showToast('YOU ARE FROZEN · WAIT FOR RESCUE',2800);
+}
+
+function updateAI(u,dt){
+ if(u.state!=='active')return;
+ if(!u.team){
+  let threat=null,bd=1e9;
+  for(const s of units){
+   if(s.team&&s.state==='active'){
+    let d=dist(u,s);
+    // Hiders check line-of-sight to verify if seekers actually spot them
+    if(d<bd&&d<18&&hasLineOfSight(u.x, u.z, s.x, s.z)){bd=d;threat=s;}
+   }
+  }
+  if(threat){
+   let dx=u.x-threat.x,dz=u.z-threat.z,l=Math.hypot(dx,dz)||1;
+   u.target={x:u.x+dx/l*16+(Math.random()-.5)*5,z:u.z+dz/l*16+(Math.random()-.5)*5};
+   if(bd<2.2&&!u.stealth&&Math.random()<dt*2.5)u.boost=3;
+  }else{
+   u.brain-=dt;
+   if(!u.target||u.brain<=0){u.target=freeSpot();u.brain=3+Math.random()*5}
+   if(u.id%3===0){let f=units.find(x=>!x.team&&x.state==='frozen'&&dist(u,x)<14);if(f)u.target={x:f.x,z:f.z}}
+  }
+  if(u.target)move(u,u.target.x,u.target.z,u.boost>0?9.5:4.5,dt);
+ }else{
+  const h=nearestHider(u);
+  if(h){u.target={x:h.x,z:h.z};u.brain=2}
+  else{u.brain-=dt;if(!u.target||u.brain<=0){u.target=freeSpot();u.brain=3+Math.random()*4}}
+  if(u.target)move(u,u.target.x,u.target.z,(u.boost>0?10.5:5.4)*(phase===2?1.15:1),dt);
+ }
+}
+
+function step(dt){
+ elapsed+=dt;
+ if(release>0){release-=dt;if(release<=0)showToast('SEEKERS RELEASED! HUNT BEGINS',2400)}
+ if(player.boost>0)player.boost-=dt;
+ if(player.stealth>0)player.stealth-=dt;
+ if(player.scan>0)player.scan-=dt;
+ if(player.grace>0)player.grace-=dt;
+
+ if(player.state==='active'){
+  let ix=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+joy.x;
+  let iz=(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0)+joy.y;
+  const len=Math.hypot(ix,iz);
+  if(len>.12){
+   ix/=Math.max(1,len);iz/=Math.max(1,len);
+   player.x+=ix*(player.boost>0?12:7.5)*dt;
+   player.z+=iz*(player.boost>0?12:7.5)*dt;
+   if(blocked(player.x,player.z)){player.x-=ix*(player.boost>0?12:7.5)*dt;player.z-=iz*(player.boost>0?12:7.5)*dt}
+   moveTarget=null;
+  }else if(moveTarget){
+   move(player,moveTarget.x,moveTarget.z,player.boost>0?12:7.5,dt);
+  }
+  player.x=Math.max(-zone,Math.min(zone,player.x));
+  player.z=Math.max(-zone,Math.min(zone,player.z));
+ }
+
+ for(const u of units){
+  if(u!==player)updateAI(u,dt);
+  if(u.grace>0)u.grace-=dt;
+  if(u.boost>0)u.boost-=dt;
+  if(u.state==='frozen'){
+   u.freeze+=dt;
+   const rescuer=units.find(h=>!h.team&&h.state==='active'&&h!==u&&dist(h,u)<2.6);
+   if(rescuer){
+    u.rescue+=dt;
+    if(u.rescue>1.2){
+     u.state='active';u.mesh.scale.set(1,1,1);
+     u.mesh.children[0].material=mats.hider;
+     u.grace=3;u.rescue=0;stats.rescues++;
+     if(rescuer.player)showToast('TEAMMATE RESCUED SUCCESSFULLY!');
+    }
+   }else u.rescue=Math.max(0,u.rescue-dt*2);
+   if(u.freeze>13){u.state='out';if(u.player)showEnd(false,'You were frozen and not rescued in time.')}
+  }
+ }
+
+ if(release<=0){
+  for(const s of active(1)){
+   for(const h of active(0)){
+    // Seekers tag hiders only if within range AND have direct line of sight (no walls blocking)
+    if(dist(s,h)<1.5 && hasLineOfSight(s.x, s.z, h.x, h.z)){
+     freeze(h);
+    }
+   }
+  }
+ }
+
+ const count=active(0).length;
+ let next=count>30?0:count>10?1:2;
+ if(next>phase){
+  phase=next;
+  zoneTarget=[49,34,21][phase];
+  showToast(['','PHASE 2 · CITY SQUEEZE ACTIVE','FINAL PHASE · NO ESCAPE'],2800);
+  if(phase===2)phase3=0;
+ }
+ if(phase===2)phase3+=dt;
+ zone+=(zoneTarget-zone)*Math.min(1,dt*.5);
+ const ring=scene.getObjectByName('zoneRing');
+ if(ring){ring.scale.setScalar(zone/49);ring.position.set(0,.2,0)}
+
+ for(const u of units){
+  if(u.state==='active'&&(Math.abs(u.x)>zone||Math.abs(u.z)>zone)){
+   if(!u.team)freeze(u);
+   else{u.x=Math.max(-zone,Math.min(zone,u.x));u.z=Math.max(-zone,Math.min(zone,u.z))}
+  }
+ }
+
+ if(active(0).length===0)showEnd(role==='SEEKER','All 50 hiders have been apprehended.');
+ else if(phase===2&&phase3>=60)showEnd(role==='HIDER','You survived the ultimate lockdown.');
+
+ for(const u of units){
+  u.mesh.position.set(u.x,0,u.z);
+  if(u.target){
+   const a=Math.atan2(u.target.x-u.x,u.target.z-u.z);
+   u.mesh.rotation.y+=(a-u.mesh.rotation.y)*Math.min(1,dt*10);
+  }
+  u.anim+=dt*(u===player?9:6);
+  u.mesh.position.y=u.state==='active'?Math.abs(Math.sin(u.anim))*.07:0;
+ }
+}
+
+function cameraFollow(dt){
+ if(!player)return;
+ const target=v(player.x,1.3,player.z);
+ const desired=v(player.x,11.5,player.z+14.5);
+ camera.position.lerp(desired,1-Math.pow(.0005,dt));
+ camera.lookAt(target);
+}
+
+function animate(){
+ requestAnimationFrame(animate);
+ const dt=Math.min(clock.getDelta(),.05);
+ if(running&&!paused&&!over){
+  step(dt);
+  cameraFollow(dt);
+  if(elapsed-lastHud>.15){updateHud();drawMap();lastHud=elapsed;}
+ }else if(player)cameraFollow(dt);
+
+ particles.forEach(p=>p.rotation.y+=dt*.02);
+
+ if(composer)composer.render();
+ else renderer.render(scene,camera);
+}
+
+function showEnd(win,reason){
+ if(over)return;over=true;running=false;
+ const m=Math.floor(elapsed/60), s=Math.floor(elapsed%60);
+ $('overlay').style.display='flex';
+ $('panel').innerHTML=`<div class="eyebrow">MATCH COMPLETE</div><h1>${win?'VICTORY':'DEFEAT'}</h1><p>${reason}</p><p><b>SURVIVAL TIME ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}</b><br>Tags: ${stats.tags} · Rescues: ${stats.rescues}<br>Hiders remaining: ${active(0).length} / 50</p><div class="actions"><button class="primary" id="again">PLAY AGAIN</button><button id="menu">MAIN MENU</button></div>`;
+ $('again').onclick=()=>startGame(role==='SEEKER'?1:0);
+ $('menu').onclick=mainMenu;
+}
+
+function mainMenu(){
+ over=false;running=false;paused=false;
+ $('actionBtn').style.display='none';
+ $('overlay').style.display='flex';
+ $('panel').innerHTML=`<div class="eyebrow">ADVANCED 3D CINEMATIC SURVIVAL</div><h1>GAME <span>ON</span></h1><p><b>10 SEEKERS. 50 HIDERS. NEXT-GEN ARENA.</b><br>Immerse yourself in volumetric fog, ray-traced reflections, line-of-sight casting, and dynamic abilities.</p><div class="actions"><button class="primary" id="hider">PLAY AS HIDER</button><button id="seeker">PLAY AS SEEKER</button></div><p class="note">Pick your role & loadout power to deploy into the tactical arena.</p>`;
+ $('hider').onclick=()=>startGame(0);
+ $('seeker').onclick=()=>startGame(1);
+}
+
+function updateHud(){
+ if(!player)return;
+ $('left').textContent=active(0).length+' / 50';
+ $('phase').textContent=['OUTSKIRTS','THE SQUEEZE','FINAL LOCKDOWN'][phase];
+ $('time').textContent=String(Math.floor(elapsed/60)).padStart(2,'0')+':'+String(Math.floor(elapsed%60)).padStart(2,'0');
+}
+
+function drawMap(){
+ const c=$('map'),ctx=c.getContext('2d'),k=256/100;
+ ctx.clearRect(0,0,256,256);
+ ctx.fillStyle='#0c1924';ctx.fillRect(0,0,256,256);
+ ctx.fillStyle='#1c3144';
+ for(const o of OBSTACLES)ctx.fillRect((o[0]-o[2]/2+50)*k,(o[1]-o[3]/2+50)*k,o[2]*k,o[3]*k);
+ ctx.strokeStyle='#ffbe42';ctx.lineWidth=2.5;
+ ctx.strokeRect((50-zone)*k,(50-zone)*k,zone*2*k,zone*2*k);
+ for(const u of units){
+  if(u.state==='out')continue;
+  if(u.team===1&&(player.team||player.scan>0||(dist(u,player)<18 && hasLineOfSight(player.x,player.z,u.x,u.z))))ctx.fillStyle='#ff3355';
+  else if(!u.team&&u.state==='frozen')ctx.fillStyle='#8ddcff';
+  else if(u===player)ctx.fillStyle='#fff';
+  else continue;
+  ctx.beginPath();ctx.arc((u.x+50)*k,(u.z+50)*k,u===player?4.5:2.8,0,Math.PI*2);ctx.fill();
+ }
+}
+
+function pauseGame(){
+ if(!running||over)return;
+ paused=!paused;
+ if(paused){
+  $('overlay').style.display='flex';
+  $('panel').innerHTML=`<div class="eyebrow">GAME PAUSED</div><h1>TAKE A <span>BREATH</span></h1><p>Your tactical match is waiting.</p><div class="actions"><button class="primary" id="resume">RESUME</button><button id="restart">RESTART</button><button id="quit">QUIT</button></div>`;
+  $('resume').onclick=()=>{$('overlay').style.display='none';paused=false};
+  $('restart').onclick=()=>startGame(role==='SEEKER'?1:0);
+  $('quit').onclick=mainMenu;
+}else $('overlay').style.display='none';
+}
+
+function bind(){
+ $('hider').onclick=()=>startGame(0);
+ $('seeker').onclick=()=>startGame(1);
+ $('power').onclick=usePower;
+ $('actionBtn').onclick=triggerAction;
+ $('pause').onclick=pauseGame;
+ window.addEventListener('keydown',e=>{
+  keys[e.code]=true;
+  if(e.code==='Space'){e.preventDefault();usePower()}
+  if(e.code==='KeyE'){e.preventDefault();triggerAction()}
+  if(e.code==='Escape')pauseGame()
+ });
+ window.addEventListener('keyup',e=>keys[e.code]=false);
+
+ const ray=new THREE.Raycaster(),mouse=new THREE.Vector2(),plane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+ renderer.domElement.addEventListener('pointerdown',e=>{
+  if(!running||paused||!player||player.state!=='active')return;
+  const r=renderer.domElement.getBoundingClientRect();
+  mouse.x=(e.clientX-r.left)/r.width*2-1;mouse.y=-(e.clientY-r.top)/r.height*2+1;
+  ray.setFromCamera(mouse,camera);const p=new THREE.Vector3();
+  if(ray.ray.intersectPlane(plane,p))moveTarget={x:Math.max(-zone,Math.min(zone,p.x)),z:Math.max(-zone,Math.min(zone,p.z))};
+ });
+
+ const joyEl=$('joystick'),stick=$('stick');
+ function joyMove(e){
+  const r=joyEl.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+  let dx=e.clientX-cx,dy=e.clientY-cy,l=Math.hypot(dx,dy),m=36;
+  if(l>m){dx=dx/l*m;dy=dy/l*m}
+  stick.style.left=(36+dx)+'px';stick.style.top=(36+dy)+'px';
+  joy.x=dx/m;joy.y=dy/m;
+ }
+ joyEl.addEventListener('pointerdown',e=>{joy.active=true;joyEl.setPointerCapture(e.pointerId);joyMove(e)});
+ joyEl.addEventListener('pointermove',e=>{if(joy.active)joyMove(e)});
+ function joyEnd(){joy.active=false;joy.x=joy.y=0;stick.style.left='35px';stick.style.top='35px'}
+ joyEl.addEventListener('pointerup',joyEnd);joyEl.addEventListener('pointercancel',joyEnd);
+
+ window.addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);if(composer)composer.setSize(innerWidth,innerHeight);
+ });
+ document.addEventListener('visibilitychange',()=>{if(document.hidden&&running&&!paused)pauseGame()});
+}
+
+makeRenderer();
+buildWorld();
+clock=new THREE.Clock();
+bind();
+animate();
+</script>
+</body>
+</html>
